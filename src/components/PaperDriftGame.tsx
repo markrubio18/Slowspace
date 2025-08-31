@@ -441,6 +441,7 @@ export default function PaperDriftGame() {
   }, [])
 
   useEffect(() => {
+    console.log('useEffect triggered:', { canvasRef: canvasRef.current, gameStarted })
     if (!canvasRef.current || !gameStarted) return
 
     const initGame = async () => {
@@ -449,24 +450,35 @@ export default function PaperDriftGame() {
       // Initialize Three.js scene
       refs.scene = new THREE.Scene()
       refs.scene.fog = new THREE.Fog(0x87CEEB, 10, 100)
+      refs.scene.background = new THREE.Color(0x87CEEB) // Add sky blue background
 
-      // Initialize camera
-      refs.camera = new THREE.PerspectiveCamera(
-        75,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        1000
-      )
-      refs.camera.position.set(0, 5, 10)
+              // Initialize camera
+        refs.camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000
+        )
+        refs.camera.position.set(0, 5, 10)
+        refs.camera.lookAt(0, 0, 0) // Ensure camera is looking at origin
 
       // Initialize renderer
       refs.renderer = new THREE.WebGLRenderer({
         canvas: canvasRef.current,
-        antialias: true
+        antialias: true,
+        alpha: false
       })
-      refs.renderer.setSize(window.innerWidth, window.innerHeight)
-      refs.renderer.shadowMap.enabled = true
-      refs.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+              refs.renderer.setSize(window.innerWidth, window.innerHeight)
+        refs.renderer.shadowMap.enabled = true
+        refs.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+        refs.renderer.setClearColor(0x87CEEB, 1) // Set clear color
+        
+        // Ensure canvas is properly sized
+        canvasRef.current.width = window.innerWidth
+        canvasRef.current.height = window.innerHeight
+        
+        console.log('Canvas size set to:', window.innerWidth, 'x', window.innerHeight)
+        console.log('Canvas element size:', canvasRef.current.width, 'x', canvasRef.current.height)
 
       // Initialize physics world
       refs.world = new CANNON.World()
@@ -521,9 +533,16 @@ export default function PaperDriftGame() {
         return { mesh: planeMesh, body: planeBody }
       }
 
-      refs.paperPlane = createPaperPlane()
+              refs.paperPlane = createPaperPlane()
 
-      // Create initial rooms
+        // Add a simple test cube to verify rendering
+        const testGeometry = new THREE.BoxGeometry(2, 2, 2)
+        const testMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 })
+        const testCube = new THREE.Mesh(testGeometry, testMaterial)
+        testCube.position.set(0, 0, -5)
+        refs.scene.add(testCube)
+
+        // Create initial rooms
       for (let i = 0; i < 5; i++) {
         const roomTypes = ['office', 'warehouse', 'lab']
         const randomType = roomTypes[Math.floor(Math.random() * roomTypes.length)]
@@ -574,15 +593,18 @@ export default function PaperDriftGame() {
       window.addEventListener('keyup', handleKeyUp)
       window.addEventListener('click', handleClick)
 
-      // Handle window resize
-      const handleResize = () => {
-        if (refs.camera && refs.renderer) {
-          refs.camera.aspect = window.innerWidth / window.innerHeight
-          refs.camera.updateProjectionMatrix()
-          refs.renderer.setSize(window.innerWidth, window.innerHeight)
+              // Handle window resize
+        const handleResize = () => {
+          if (refs.camera && refs.renderer) {
+            refs.camera.aspect = window.innerWidth / window.innerHeight
+            refs.camera.updateProjectionMatrix()
+            refs.renderer.setSize(window.innerWidth, window.innerHeight)
+            console.log('Resized to:', window.innerWidth, 'x', window.innerHeight)
+          }
         }
-      }
-      window.addEventListener('resize', handleResize)
+        window.addEventListener('resize', handleResize)
+        // Initial resize call
+        handleResize()
 
       // Game loop
       let lastTime = 0
@@ -648,7 +670,11 @@ export default function PaperDriftGame() {
 
         if (refs.renderer && refs.scene && refs.camera) {
           refs.renderer.render(refs.scene, refs.camera)
+          if (lastTime === 0) {
+            console.log('First frame rendered successfully')
+          }
         }
+        console.log('Starting game loop...')
         requestAnimationFrame(gameLoop)
       }
 
@@ -670,6 +696,7 @@ export default function PaperDriftGame() {
   }, [gameStarted, applyAerodynamicForces, flipGravity, updateRooms, checkCollectibles, createRoom])
 
   const handleStartGame = () => {
+    console.log('Starting game...')
     setGameStarted(true)
   }
 
@@ -698,10 +725,11 @@ export default function PaperDriftGame() {
   }
 
   return (
-    <div className="relative w-full h-screen">
+    <div className="relative w-full h-screen bg-black">
       <canvas
         ref={canvasRef}
-        className="w-full h-full"
+        className="w-full h-full block"
+        style={{ display: 'block', width: '100vw', height: '100vh' }}
       />
 
       {/* HUD */}
